@@ -1,0 +1,312 @@
+Option Explicit
+Option Base 1
+
+Sub main()
+
+	Dim Lists$(28)
+    Lists$(1) = "RLP_15"
+    Lists$(2) = "RLP_14"
+    Lists$(3) = "RLP_13"
+    Lists$(4) = "RLP_17"
+    Lists$(5) = "RLP_18"
+    Lists$(6) = "RLP_6"
+    Lists$(7) = "RLP_7"
+    Lists$(8) = "RLP_8"
+    Lists$(9) = "RLP_5"
+    Lists$(10) = "RLP_9"
+    Lists$(11) = "TPA 60_1"
+    Lists$(12) = "TPA 16_4"
+    Lists$(13) = "TPA 16_3"
+    Lists$(14) = "TPA 16_5"
+    Lists$(15) = "TPA 16_6"
+    Lists$(16) = "TPA 50_8"
+    Lists$(17) = "TPA 50_9"
+    Lists$(18) = "TPA 30_4"
+    Lists$(19) = "TPA 30_3"
+    Lists$(20) = "TPA 35_1"
+    Lists$(21) = "TPA 12_1"
+    Lists$(22) = "TPA 12_2"
+    Lists$(23) = "TPA 12_3"
+    Lists$(24) = "TPA 12_4"
+    Lists$(25) = "TPA 6_2"
+    Lists$(26) = "TPA 6_3"
+    Lists$(27) = "DACS 15"
+    Lists$(28) = "DACS 30"
+
+Dim oConn As ADODB.Connection
+Dim rs As ADODB.Recordset
+Dim fld As ADODB.Field
+Dim TableName(), TableName1()
+Dim objExcelApp
+Dim mssql, myfilename As String
+Dim StoppageTime(50000), Col(100) As String
+Dim  h, i, nr, nc_new, NoOfTables, iItemCount As Integer
+Dim nc As Integer
+Dim wb As Workbook
+Dim sStartDate, sEndDate, sEnDate, sStrDate, TableName_new As String
+Dim objFSO
+
+myfilename = "file:///E:\New folder\Stoppage.xlsx"
+    Set wb = Workbooks.Open(myfilename)
+
+    sStartDate = from_year & "-" & from_month & "-" & from_day & " " & from_hour  & ":" & 00 & ":" & "00"
+    sEndDate = end_year & "-" & end_month & "-" & end_day & " " & end_hour  & ":" & 00 & ":" & "00"
+    'stimeInterval = time_interval
+
+
+        Begin Dialog UserDialog 640,170
+        Text 10,10,622,15000,"Please Push the OK Button"
+        MultiListBox 10,25,622,100,Lists$(),.List
+        OKButton 40,136,80,25
+        CancelButton 150,136,120,25
+    End Dialog
+    Dim dlg As UserDialog
+    On Error Resume Next
+    Dialog dlg
+
+    For i = LBound(dlg.List) To UBound(dlg.List)
+        ReDim Preserve TableName(0 To i) As Variant
+        ReDim Preserve TableName1(0 To i) As Variant
+        ReDim Preserve TableName2(0 To i) As Variant
+        TableName1(i) = Lists$(dlg.List(i)) & "_Product"
+        TableName2(i) = Lists$(dlg.List(i)) & "_Stoppage"
+        TableName(i) = Lists$(dlg.List(i))
+        NoOfTables = NoOfTables + 1
+    Next
+
+    If NoOfTables = 0 Then
+        Exit Sub
+        wb.Save
+        wb.Close
+    End If
+
+    If sStartDate > sEndDate   Then
+        Exit Sub
+        wb.Save
+        wb.Close
+    End If
+
+     ShowLongOperationDialog("Data is importing", True)
+
+
+    Cells.Clear
+    Cells.ClearFormats
+    Cells(1, 1) = "FROM"
+    Cells(1, 1).Font.Size = 20
+    Cells(1, 6) = "TO"
+    Cells(1, 6).Font.Size = 20
+    Cells(2, 1) = "Report Type: Stoppage Report"
+    Cells(1, 37).Font.Size = 36
+    Range(Cells(2, 1), Cells(2, 6)).Merge
+    Cells(1, 37) = "T   D  K    I  n  d  i  a   P  v  t  .   L  t  d  ."
+    Range(Cells(1, 37), Cells(1, 52)).Merge
+    Range(Cells(2, 1), Cells(2, 55)).Font.Size = 36
+    Cells(2, 7) = "R  E  A  S  O  N  S"
+    Range(Cells(2, 7), Cells(2, 54)).Merge
+    Cells(2, 43) = "A  L  A  R  M  S"
+    Range(Cells(2, 55), Cells(2, 89)).Merge
+    Range(Cells(1, 1), Cells(2, 89)).Interior.ColorIndex = 37
+    Range(Cells(3, 1), Cells(3, 89)).Interior.ColorIndex = 36
+    Range(Cells(3, 1), Cells(3, 89)).Font.Size = 14
+    Range(Cells(1, 1), Cells(1, 89)).Font.Bold = True
+    Range(Cells(1, 1), Cells(3, 89)).Borders.LineStyle = xlContinuous
+    Range(Cells(1, 1), Cells(3, 89)).VerticalAlignment = xlCenter
+    Range(Cells(1, 1), Cells(3, 89)).HorizontalAlignment = xlCenter
+    Cells(3, 1) = "Date(dd/mm/yyyy hh:mm)"
+    Cells(3, 2) = "Machine Name"
+    Cells(3, 3) = "Shift"
+    Cells(3, 4) = "SPM"
+    Cells(3, 5) = "Cavity"
+    Cells(3, 6) = "Shift Actual"
+    Cells(3, 7) = "Shift Target"
+    Cells(3, 8) = "Shift Rejection"
+    Cells(3, 9) = "Shift Time"
+    Cells(3, 10) = "Down Time"
+    Cells(3, 11) = "AR"
+    Cells(3, 12) = "PR"
+    Cells(3, 13) = "QR"
+    Cells(3, 14) = "OEE"
+    Cells(3, 15) = "Adaptor Jamming"
+    Cells(3, 16) = "AutomatProblem"
+    Cells(3, 17) = "Burr_Flash Problem"
+    Cells(3, 18) = "Channel Problem"
+    Cells(3, 19) = "Chipping"
+    Cells(3, 20) = "Cleaning_Oiling_Tightening"
+    Cells(3, 21) = "Conveyor Problem"
+    Cells(3, 22) = "Crack Problem"
+    Cells(3, 23) = "Density Problem"
+    Cells(3, 24) = "Die Return Problem"
+    Cells(3, 25) = "Dimension Variation"
+    Cells(3, 26) = "Filler Problem"
+    Cells(3, 27) = "Floor Cleaning"
+    Cells(3, 28) = "Geometry Change"
+    Cells(3, 29) = "Granulate Rework"
+    Cells(3, 30) = "Gripper Problem"
+    Cells(3, 31) = "Hopper Jamming"
+    Cells(3, 32) = "Lunch or Dinner"
+    Cells(3, 33) = "Manpower Shortage"
+    Cells(3, 34) = "Material Shortage"
+    Cells(3, 35) = "Material_Grade Change"
+    Cells(3, 36) = "Mech Maint_Elect Prob"
+    Cells(3, 37) = "No Plan"
+    Cells(3, 38) = "Operator is not available"
+    Cells(3, 39) = "Others Break"
+    Cells(3, 40) = "Planned Maintenance"
+    Cells(3, 41) = "Pull Out Problem"
+    Cells(3, 42) = "Raged Edge"
+    Cells(3, 43) = "Sensor Problem"
+    Cells(3, 44) = "Sticking"
+    Cells(3, 45) = "Tool Change Delay"
+    Cells(3, 46) = "Tool Change Forced"
+    Cells(3, 47) = "Tool Change Planned"
+    Cells(3, 48) = "Tool Jamming"
+    Cells(3, 49) = "Tool Problem"
+    Cells(3, 50) = "Trails"
+    Cells(3, 51) = "Tray Unloading"
+    Cells(3, 52) = "Tray_Acce Shortage"
+    Cells(3, 53) = "Utility AC Power Air"
+    Cells(3, 54) = "Weight Variation"
+    Cells(3, 55) = "Emergency Pressed"
+    Cells(3, 56) = "Motor Covered Safety"
+    Cells(3, 57) = "Motor O_L Tripped"
+    Cells(3, 58) = "Product Count Complete"
+    Cells(3, 59) = "Tools Safety Fault"
+    Cells(3, 60) = "Top Punch Safety Fault"
+    Cells(3, 61) = "Top Tool safety"
+    Cells(3, 62) = "Oil Pressure Low"
+    Cells(3, 63) = "Low Pressure Load Monitor"
+    Cells(3, 64) = "High Pressure Load Monitor"
+    Cells(3, 65) = "RAM Adj_Motor Trip"
+    Cells(3, 66) = "Oil Filter Fault"
+    Cells(3, 67) = "Area Sensor Failure"
+    Cells(3, 68) = "No Powder"
+    Cells(3, 69) = "Air Pressure Low"
+    Cells(3, 70) = "Part Sensor Failure"
+    Cells(3, 71) = "Max Up Position Reached"
+    Cells(3, 72) = "Max Down Position Reached"
+    Cells(3, 73) = "Max Pressure Reached PS"
+    Cells(3, 74) = "DZP Sensor Fault"
+    Cells(3, 75) = "Safety Laser 1 Fault"
+    Cells(3, 76) = "Precompaction Failure"
+    Cells(3, 77) = "Rear Door Open"
+    Cells(3, 78) = "Press Stop From Automat"
+    Cells(3, 79) = "Safety Laser 2 Fault"
+    Cells(3, 80) = "Safety Laser 3 Fault"
+    Cells(3, 81) = "Failure Protective Door"
+    Cells(3, 82) = "Min Pressure Fault"
+    Range(Cells(1, 1), Cells(3, 82)).Columns.AutoFit
+
+    nr = 3
+    sStrDate = sStartDate
+    While CDate(sStrDate) <= CDate(sEndDate)
+    sEnDate = Format(DateAdd("h", 8, CDate(sStrDate)), "yyyy-mm-dd hh:mm:ss")
+    For h =  0 To (NoOfTables - 1)
+    Set oConn = New ADODB.Connection
+    If oConn Is Nothing Then
+            HideLongOperationDialog
+            Exit Sub
+            wb.Save
+            wb.Close
+            End If
+    Set rs = New ADODB.Recordset
+    mssql = "Select [Shift], [SPM], [Cavity], [Shift Actual], [Shift Target], [Shift Rejection] From " &  _
+            "[" & TableName1(h) & "] where DateAdd(ms, -DatePart(ms, LocalCol), LocalCol) = '" & sStrDate & "'"
+    oConn.ConnectionString = "driver={SQL Server};" &  _
+    "server=SVKA0002,1432;uid=sa;pwd=Passw0rd;database=PxC_DB"
+    oConn.Open
+    rs.Open mssql, oConn
+    nr = nr + 1
+            Range(Cells(nr, 1), Cells(nr, 14)).VerticalAlignment = xlCenter
+            Range(Cells(nr, 1), Cells(nr, 14)).HorizontalAlignment = xlCenter
+            Range(Cells(nr, 1), Cells(nr, 14)).Borders.LineStyle = xlContinuous
+            Cells(nr, 2) = TableName(h)
+            With Worksheets("Sheet1").Range(Cells(nr, 3), Cells(nr, 14))
+                .CopyFromRecordset rs
+            End With
+            rs.Close
+    Next
+    Cells(nr, 1) = sStrDate
+    Range(Cells(((nr - NoOfTables) + 1), 1), Cells(nr, 1)).Merge
+    sStrDate = Format(DateAdd("h", 8, CDate(sStrDate)), "yyyy-mm-dd hh:mm:ss")
+    Wend
+    oConn.Close
+    Set oConn = Nothing
+
+nr = 3
+sStrDate = sStartDate
+While CDate(sStrDate) <= CDate(sEndDate)
+sEnDate = Format(DateAdd("h", 8, CDate(sStrDate)), "yyyy-mm-dd hh:mm:ss")
+For h =  0 To (NoOfTables - 1)
+Set oConn = New ADODB.Connection
+Set rs = New ADODB.Recordset
+mssql = "SELECT [Adaptor Jamming], [Automat Problem], [Burr_Flash Problem], [Channel Problem], [Chipping], [Cleaning_Oiling_Tightening], " &  _
+        "[Conveyor Problem], [Crack Problem], [Density Problem], [Die Return Problem], [Dimension Variation], [Filler Problem], [Floor Cleaning], [Geometry Change], [Granulate Rework], " &  _
+        "[Gripper Problem], [Hopper Jamming], [Lunch or Dinner], [Manpower Shortage], [Material Shortage], [Material_Grade Change], [Mech Maint_Elect Prob], [No Plan], " &  _
+        "[Operator is not available], [Others Break], [Planned Maintenance], [Pull Out Problem], [Raged Edge], [Sensor Problem], [Sticking], [Tool Change Delay], [Tool Change Forced], " &  _
+        "[Tool Change Planned], [Tool Jamming], [Tool Problem], [Trails], [Tray Unloading], [Tray_Acce Shortage], [Utility AC Power Air], [Weight Variation], [Emergency Pressed], " &  _
+        "[Motor Covered Safety], [Motor O_L Tripped], [Product Count Complete], [Tools Safety Fault], [Top Punch Safety Fault], [Top Tool safety], [Oil Pressure Low], " &  _
+        "[Low Pressure Load Monitor], [High Pressure Load Monitor], [RAM Adj_Motor Trip], [Oil Filter Fault], [Area Sensor Failure], [No Powder], [Air Pressure Low], [Part Sensor Failure], " &  _
+        "[Max Up Position Reached], [Max Down Position Reached], [Max Pressure Reached PS], [DZP Sensor Fault], [Safety Laser 1 Fault], [Precompaction Failure], [Rear Door Open], " &  _
+        "[Press Stop From Automat], [Safety Laser 2 Fault], [Safety Laser 3 Fault], [Failure Protective Door], [Min Pressure Fault] " &  _
+        "FROM [" & TableName2(h) & "] WHERE DateAdd(ms, -DatePart(ms, LocalCol), LocalCol) >  '" & sStrDate & "' AND DateAdd(ms, -DatePart(ms, LocalCol), LocalCol) <=  '" & sEnDate & "' ORDER BY LocalCol "
+ oConn.ConnectionString = "driver={SQL Server};" &  _
+"server=SVKA0002,1432;uid=sa;pwd=Passw0rd;database=PxC_DB"
+oConn.Open
+rs.Open mssql, oConn
+
+            nr = nr + 1
+            Range(Cells(nr, 15), Cells(nr, 82)).VerticalAlignment = xlCenter
+            Range(Cells(nr, 15), Cells(nr, 82)).HorizontalAlignment = xlCenter
+            Range(Cells(nr, 15), Cells(nr, 82)).Borders.LineStyle = xlContinuous
+
+            With Worksheets("Sheet1").Range(Cells(nr, 15), Cells(nr, 82))
+                .CopyFromRecordset rs
+End With
+rs.Close
+
+Next
+sStrDate = Format(DateAdd("h", 8, CDate(sStrDate)), "yyyy-mm-dd hh:mm:ss")
+Wend
+oConn.Close
+Set oConn = Nothing
+
+
+            Range("I4").Formula = "=435-AG4-AS4-AC4-AM4-AX4-AK4-AN4-T4"
+            Range(Cells(4, 9), Cells(nr, 9)).FillDown
+            Range("J4").Formula = "=O4+P4+Q4+R4+S4+U4+V4+W4+X4+Y4+Z4+AA4+AB4+AD4+AE4+AH4+AI4+AJ4+AL4+AO4+AP4+AQ4+AR4+AT4+AU4+AV4+AW4+AY4+AZ4+BA4+BB4"
+            Range(Cells(4, 10), Cells(nr, 10)).FillDown
+            Range("K4").Formula = "=((I4-J4)/I4)*100"
+            Range(Cells(4, 11), Cells(nr, 11)).FillDown
+            Range("L4").Formula = "=(F4/G4)*100"
+            Range(Cells(4, 12), Cells(nr, 12)).FillDown
+            Range("M4").Formula = "=((F4-H4)/F4)*100"
+            Range(Cells(4, 13), Cells(nr, 13)).FillDown
+            Range("N4").Formula = "=(K4*L4*M4)/10000"
+            Range(Cells(4, 14), Cells(nr, 14)).FillDown
+
+
+    TableName_new = Join(TableName,",")
+    Debug.Print TableName_new
+    Cells(1, 10) = TableName_new
+    Range(Cells(1, 10), Cells(1, 28)).Merge
+    Range(Cells(1, 10), Cells(1, 28)).Font.Size = 20
+    Cells(1, 2) = Cells(4, 1).Value
+    Range(Cells(1, 2), Cells(1, 5)).Merge
+    Range(Cells(1, 2), Cells(1, 5)).Font.Size = 20
+    Cells(1, 7) = sEndDate
+    Range(Cells(1, 7), Cells(1, 9)).Merge
+    Range(Cells(1, 7), Cells(1, 9)).Font.Size = 20
+
+
+
+wb.Save
+wb.Close
+
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+objFSO.CopyFile "E:\New folder\Stoppage.xlsx", "C:\Users\ec6253\Documents\Stoppage Report\STOPPAGE" & Format(Now(), "DD-MM-YYYY hh mm AMPM") & ".xlsx"
+
+   Workbooks("STOPPAGE" & Format(Now(), "DD-MM-YYYY hh mm AMPM") & ".xlsx").Close SaveChanges:=True
+
+   HideLongOperationDialog
+
+End Sub
